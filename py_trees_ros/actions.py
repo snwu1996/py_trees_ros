@@ -52,7 +52,7 @@ class ActionClient(py_trees.behaviour.Behaviour):
     that it can identify and react to 'significant' events while running.
     """
     def __init__(self, name="Action Client", action_spec=None, action_goal=None, action_namespace="/action",
-                 override_feedback_message_on_running="moving"):
+                 override_feedback_message_on_running="moving", success_criteria=None):
         super(ActionClient, self).__init__(name)
         self.action_client = None
         self.sent_goal = False
@@ -60,6 +60,7 @@ class ActionClient(py_trees.behaviour.Behaviour):
         self.action_goal = action_goal
         self.action_namespace = action_namespace
         self.override_feedback_message_on_running = override_feedback_message_on_running
+        self._success_criteria = success_criteria
 
     def setup(self, timeout):
         """
@@ -75,7 +76,7 @@ class ActionClient(py_trees.behaviour.Behaviour):
             self.action_spec
         )
         if not self.action_client.wait_for_server(rospy.Duration(timeout)):
-            self.logger.error("{0}.setup() could not connect to the rotate action server at '{1}'".format(self.__class__.__name__, self.action_namespace))
+            self.logger.error("{0}.setup() could not connect to the action server at '{1}'".format(self.__class__.__name__, self.action_namespace))
             self.action_client = None
             return False
         return True
@@ -108,8 +109,14 @@ class ActionClient(py_trees.behaviour.Behaviour):
                                               actionlib_msgs.GoalStatus.PREEMPTED]:
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
-        if result:
-            return py_trees.Status.SUCCESS
+        if result is not None:
+            if self._success_criteria is not None:
+                if self._success_criteria(result):
+                    return py_trees.Status.SUCCESS
+                else:
+                    return py_trees.Status.FAILURE
+            else:
+                return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
