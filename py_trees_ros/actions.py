@@ -87,6 +87,7 @@ class ActionClient(py_trees.behaviour.Behaviour):
         """
         self.logger.debug("{0}.initialise()".format(self.__class__.__name__))
         self.sent_goal = False
+        self.action_result = None
 
     def update(self):
         """
@@ -108,10 +109,10 @@ class ActionClient(py_trees.behaviour.Behaviour):
         if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
                                               actionlib_msgs.GoalStatus.PREEMPTED]:
             return py_trees.Status.FAILURE
-        result = self.action_client.get_result()
-        if result is not None:
+        self.action_result = self.action_client.get_result()
+        if self.action_result is not None:
             if self._success_criteria is not None:
-                if self._success_criteria(result):
+                if self._success_criteria(self.action_result):
                     return py_trees.Status.SUCCESS
                 else:
                     return py_trees.Status.FAILURE
